@@ -1,5 +1,7 @@
 # Local Screen Translator (Windows)
 
+[English](README.md) | [中文](README_zh.md)
+
 Offline Windows overlay that OCRs a screen region and translates it in real time. Built for games, videos, and UI text.
 
 ## License
