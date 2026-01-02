@@ -1,0 +1,112 @@
+{
+  "capture": {
+    "backend": "dxcam",
+    "monitor_index": 0,
+    "target_fps": 60,
+    "roi": [100, 100, 900, 400]
+  },
+  "pipeline": {
+    "ocr_interval_ms": 120,
+    "change_detect": {
+      "enabled": true,
+      "downsample": 64,
+      "mad_threshold": 3.0
+    },
+    "debounce": {
+      "min_translate_interval_ms": 150,
+      "text_similarity_threshold": 0.92
+    },
+    "sentence_buffer": {
+      "enabled": true,
+      "merge_gap_ms": 1200,
+      "max_hold_ms": 0,
+      "max_chars": 300,
+      "min_overlap": 6,
+      "end_punct": ".!?…。！？",
+      "split_on_no_overlap": true,
+      "split_similarity": 0.6
+    },
+    "cache": {
+      "enabled": true,
+      "max_entries": 5000
+    }
+  },
+  "ocr": {
+    "engine": "paddleocr",
+    "det_model_path": "models/ocr/det.onnx",
+    "rec_model_path": "models/ocr/rec_en.onnx",
+    "box_thresh": 0.5,
+    "unclip_ratio": 1.6,
+    "text_score": 0.5,
+    "paddle": {
+      "det_model_dir": "models/ocr/ppocrv5_server_det",
+      "rec_model_dir": "models/ocr/ppocrv5_server_rec",
+      "device": "gpu"
+    }
+  },
+  "translate": {
+    "engine": "ct2_nllb",
+    "from": "ja",
+    "to": "zh",
+    "argos_device_type": "cpu",
+    "nllb": {
+      "source_lang": "jpn_Jpan",
+      "target_lang": "zho_Hans"
+    },
+    "ct2_nllb": {
+      "model_dir": "models/translate/ct2/nllb-200-distilled-600M",
+      "tokenizer_dir": "models/translate/hf/nllb-200-distilled-600M",
+      "device": "cuda",
+      "compute_type": "float16",
+      "beam_size": 1,
+      "max_batch_size": 1
+    },
+    "ct2": {
+      "model_dir": "models/translate/ct2/opus-mt-en-zh",
+      "tokenizer_dir": "models/translate/hf/opus-mt-en-zh",
+      "device": "cuda",
+      "compute_type": "float16",
+      "beam_size": 1,
+      "max_batch_size": 1
+    },
+    "ct2_cascade": {
+      "first_model_dir": "models/translate/ct2/opus-mt-ja-en",
+      "second_model_dir": "models/translate/ct2/opus-mt-en-zh",
+      "first_tokenizer_dir": "models/translate/hf/opus-mt-ja-en",
+      "second_tokenizer_dir": "models/translate/hf/opus-mt-en-zh",
+      "device": "cuda",
+      "compute_type": "float16",
+      "beam_size": 1,
+      "max_batch_size": 1
+    }
+  },
+  "input": {
+    "mode": "text_hook_clipboard",
+    "caption_port": 8765,
+    "clipboard_poll_ms": 120,
+    "text_hook_app_path": "",
+    "text_hook_require_foreground": true,
+    "text_hook_regex": "",
+    "text_hook_debug": false
+  },
+  "ui": {
+    "mode": "subtitle",
+    "font_family": "Microsoft YaHei UI",
+    "font_size": 22,
+    "max_width": 900,
+    "opacity": 0.95,
+    "click_through": true,
+    "context": {
+      "enabled": true,
+      "max_entries": 12,
+      "show_original": true,
+      "show_translation": true,
+      "font_size": 14,
+      "max_width": 520,
+      "max_height": 320,
+      "opacity": 0.95,
+      "update_similarity": 0.85,
+      "clear_on_reselect": true
+    }
+  }
+}
