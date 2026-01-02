@@ -1,12 +1,22 @@
 # Local Screen Translator (Windows)
 
-Minimal MVP scaffold for a local screen ROI OCR + translation overlay on Windows.
+Offline Windows overlay that OCRs a screen region and translates it in real time. Built for games, videos, and UI text.
 
 ## License
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## 1) Create venv + install deps
+## Features
+
+- ROI selection + always-on-top subtitle overlay
+- PaddleOCR (PP-OCRv5) for Japanese/English OCR
+- High quality offline translation with NLLB-200 (ja -> zh)
+- Optional text-hook mode (clipboard) and YouTube captions bridge
+- Context window for recent original/translated lines
+
+## Quick start
+
+1) Create venv and install deps
 
 ```powershell
 py -3.10 -m venv .venv
@@ -14,7 +24,7 @@ py -3.10 -m venv .venv
 pip install -r requirements.txt
 ```
 
-Install PaddlePaddle (choose one):
+2) Install PaddlePaddle (choose one)
 
 ```powershell
 # GPU (CUDA 11.8)
@@ -24,36 +34,21 @@ python -m pip install paddlepaddle-gpu==3.2.2 -i https://www.paddlepaddle.org.cn
 python -m pip install paddlepaddle==3.2.2
 ```
 
-## 2) Download PP-OCRv5 models (det + rec)
+3) Download OCR models (PP-OCRv5 det + rec)
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python .\scripts\download_ppocrv5_models.py
 ```
 
-## 3) Download & convert NLLB-200 (CTranslate2, high quality)
+4) Download translator models (recommended: NLLB-200)
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python .\scripts\download_ct2_nllb.py
 ```
 
-## 4) (Optional) Download OPUS-MT fallback (ja->en->zh)
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python .\scripts\download_ct2_opus_mt.py --model Helsinki-NLP/opus-mt-ja-en
-python .\scripts\download_ct2_opus_mt.py --model Helsinki-NLP/opus-mt-en-zh
-```
-
-## 5) (Optional) Install Argos model (ja -> zh)
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-python .\scripts\install_argos_model.py --from ja --to zh
-```
-
-## 6) Run
+5) Run
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -66,40 +61,78 @@ Use last ROI (skip selection):
 python .\app\main.py --use-last
 ```
 
-Notes:
-- PP-OCRv5 model files are downloaded into `models/ocr/ppocrv5_server_det` and `models/ocr/ppocrv5_server_rec`.
-- If you want to switch back to RapidOCR ONNX, update `config/default.json` and place ONNX models under `models/ocr/`.
-- To use GPU with PaddleOCR, install `paddlepaddle-gpu` and set `"device": "gpu"` in `config/default.json`.
-- Default translator is NLLB-200 distilled (`facebook/nllb-200-distilled-600M`) with `jpn_Jpan -> zho_Hans`.
-- There is no direct OPUS `ja->zh` model; OPUS fallback uses `ja->en` then `en->zh` in a cascade.
-- CTranslate2 uses models converted by `scripts/download_ct2_nllb.py` or `scripts/download_ct2_opus_mt.py`.
-- If CTranslate2 fails to initialize on GPU (missing CUDA 12 runtime), it will fall back to CPU int8 automatically.
-- A floating Context window shows recent OCR + translations; toggle it with the `Context` button.
-- Sentence buffering merges consecutive subtitle fragments and only translates once a sentence is complete or times out.
-- When `split_on_no_overlap` is enabled, a new unrelated subtitle will force-flush the previous sentence even without punctuation.
-- DPI scaling issues can cause ROI offset. Keep Windows scaling at 100% until DPI handling is tuned.
-- Input mode can be switched from the Control window (OCR, Text Hook, Captions) or by editing `input.mode` in `config/default.json`.
+## Modes
 
-## Game text hook (Textractor)
+- OCR (default): live screen OCR + translation overlay
+- Text Hook: reads clipboard (for Textractor, etc.)
+- Captions: HTTP bridge for YouTube captions
 
-For Japanese games, the most accurate approach is a text hook (no OCR). Use Textractor to copy game text to the clipboard.
+You can switch modes from the Control window or via `config/default.json` (`input.mode`).
 
-1) Launch Textractor, attach to the game process, and pick a working hook.
-2) Enable its clipboard output (Extensions -> Clipboard).
-3) Set `input.mode` to `text_hook_clipboard` or select `Text Hook` in the Control window.
-4) Run the app and keep Textractor active; new clipboard text will be translated.
+## Translation options
 
-`input.clipboard_poll_ms` controls how frequently the clipboard is read.
-`input.text_hook_app_path` can restrict translations to when the target game is the foreground window (no embedded changes; just a foreground process path check). If you point it to a folder, any exe under that folder will match.
-`input.text_hook_debug` shows status updates when clipboard text is received.
+Default translator is NLLB-200 distilled (`facebook/nllb-200-distilled-600M`) with `jpn_Jpan -> zho_Hans`.
 
-## YouTube captions plugin (no OCR)
+Optional fallbacks:
+- OPUS-MT cascade (ja->en->zh):
 
-If you want accurate captions without OCR, you can use a userscript to send YouTube captions to the app.
+```powershell
+.\.venv\Scripts\Activate.ps1
+python .\scripts\download_ct2_opus_mt.py --model Helsinki-NLP/opus-mt-ja-en
+python .\scripts\download_ct2_opus_mt.py --model Helsinki-NLP/opus-mt-en-zh
+```
 
-1) Install Tampermonkey (Chrome/Edge).
-2) Add the script at `plugins/youtube_caption_bridge.user.js`.
-3) Set `input.mode` to `caption_http` in `config/default.json`.
+- Argos Translate (CPU only, lower quality):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python .\scripts\install_argos_model.py --from ja --to zh
+```
+
+Select engine in `config/default.json`:
+- `translate.engine = ct2_nllb | ct2_cascade | ct2 | argos`
+
+## Text hook (Textractor)
+
+Best for visual novels if OCR is too slow or inaccurate.
+
+1) Open Textractor, attach to the game process, and find a working hook.
+2) Enable clipboard output (Extensions -> Clipboard).
+3) Set `input.mode` to `text_hook_clipboard` or choose `Text Hook` in the Control window.
+
+Useful settings:
+- `input.clipboard_poll_ms`
+- `input.text_hook_app_path` (restrict to foreground app or folder)
+- `input.text_hook_debug`
+
+## YouTube captions bridge
+
+1) Install Tampermonkey.
+2) Add `plugins/youtube_caption_bridge.user.js`.
+3) Set `input.mode` to `caption_http`.
 4) Run the app and enable YouTube captions.
 
-The script posts captions to `http://127.0.0.1:8765/caption`.
+Posts to `http://127.0.0.1:8765/caption`.
+
+## GPU/CUDA notes
+
+- PaddleOCR GPU uses CUDA 11.8 wheels.
+- CTranslate2 GPU requires CUDA 12 runtime (`cublas64_12.dll`). If missing, it falls back to CPU int8.
+- If you see slow translation, install CUDA 12 runtime or set `translate.*.device = cpu`.
+
+## Tips and troubleshooting
+
+- Waiting for OCR usually means the ROI or monitor index is wrong; reselect ROI on the correct display.
+- For games, crop the ROI tightly around the subtitle bar to reduce noise.
+- If Windows DPI scaling is not 100%, set `FORCE_DPI_AWARENESS=1` before launching.
+
+## Project layout
+
+```
+app/        # main UI + pipeline controller
+capture/    # dxcam capture
+ocr/        # PaddleOCR/RapidOCR engines
+translate/  # CT2 + NLLB translators
+ui/         # selection/overlay/control/context windows
+config/     # default config (user config is ignored by git)
+```
